@@ -28,6 +28,18 @@ var conf = {
   })
 }
 
+const confPkgLockFalse = {
+  cwd: testdir,
+  env: Object.assign({}, process.env, {
+    npm_config_cache: cachedir,
+    npm_config_tmp: tmpdir,
+    npm_config_prefix: globaldir,
+    npm_config_registry: common.registry,
+    npm_config_loglevel: 'warn',
+    npm_config_package_lock: false
+  })
+}
+
 var server
 var fixture = new Tacks(Dir({
   cache: Dir(),
@@ -75,6 +87,19 @@ test('package-lock-only', function (t) {
     var pkgLock = JSON.parse(fs.readFileSync(pkgLockPath, 'utf-8'))
     t.equal(pkgLock.dependencies.mkdirp.version, '0.3.5')
     t.done()
+  })
+})
+
+test('package-lock-only errors when package-lock=false', function (t) {
+  return common.npm(['install', '--package-lock-only', '--json'], confPkgLockFalse).spread((code, stdout, stderr) => {
+    t.isNot(code, 0, 'error')
+    t.comment(stdout.trim())
+    t.comment(stderr.trim())
+    let error = JSON.parse(stdout).error
+    t.equal(error.code, 'ENEEDPACKAGELOCK')
+    t.equal(error.summary, '--package-lock-only conflicts with config setting `package-lock: false`.')
+    t.equal(error.detail, 'Package lock must be enabled in order to use --package-lock-only.')
+    t.end()
   })
 })
 
